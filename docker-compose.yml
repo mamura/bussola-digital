@@ -1,0 +1,36 @@
+services:
+  app:
+    image: mamura/php-dev:latest
+    container_name: ${PROJECT_NAME}
+    labels:
+      - "traefik.enable=true"
+      
+    volumes:
+      - ./src:/src
+    environment:
+      - PROJECT_WEBROOT=${WEBROOT}
+    ports:
+      - "80:80"
+      - "5173:5173" # Vite
+
+  mysql:
+    image: mysql:8.0
+    container_name: ${PROJECT_NAME}-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "${MYSQL_PORT}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
+ 
+networks:
+  default:
+      name: mamura_network
+      external: true

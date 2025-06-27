@@ -21,7 +21,7 @@ return new class extends Migration
     $table->string('coupon_code', 50)->nullable();
     $table->decimal('discount_value', 10, 2)->nullable();
 
-    $table->enum('status', ['draft', 'confirmed', 'shipped', 'cancelled'])->default('draft');
+    $table->enum('status', ['draft', 'confirmed', 'paid', 'shipped', 'cancelled'])->default('draft');
 
     $table->timestamps();
 });

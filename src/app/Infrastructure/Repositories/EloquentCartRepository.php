@@ -10,25 +10,18 @@ use App\Models\OrderItem;
 
 class EloquentCartRepository implements CartRepositoryInterface
 {
-    protected Order $order;
-
-    public function __construct()
-    {
-        // Para este MVP usamos sempre o carrinho ID = 1
-        $this->order = Order::firstOrCreate(
-            ['id' => 1],
-            ['status' => 'draft', 'total' => 0]
-        );
-    }
-
     public function current(): Cart
     {
-        return $this->mapToCart($this->order->load('items'));
+        $order = $this->getDraftOrder();
+
+        return $this->mapToCart($order->load('items'));
     }
 
     public function addItem(CartItem $item): Cart
     {
-        $this->order->items()->create([
+        $order = $this->getDraftOrder();
+
+        $order->items()->create([
             'variant_id'   => $item->variantId,
             'product_name' => $item->name,
             'unit_price'   => $item->unitPrice,
@@ -41,34 +34,49 @@ class EloquentCartRepository implements CartRepositoryInterface
 
     public function updateQty(int $itemId, int $qty): Cart
     {
-        $orderItem = $this->order->items()->findOrFail($itemId);
+        $order = $this->getDraftOrder();
+        
+        $orderItem = $order->items()->findOrFail($itemId);
         $orderItem->update([
             'quantity'    => $qty,
             'total_price' => $orderItem->unit_price * $qty,
         ]);
 
-        $this->order->total = $this->order->items()->sum('total_price');
-        $this->order->save();
+        $order->update([
+            'total' => $order->items()->sum('total_price'),
+        ]);
 
         return $this->current();
     }
 
     public function removeItem(int $itemId): Cart
     {
-        $this->order->items()->whereKey($itemId)->delete();
+        $order = $this->getDraftOrder();
 
-        $this->order->total = $this->order->items()->sum('total_price');
-        $this->order->save();
+        $order->items()->whereKey($itemId)->delete();
+
+        $order->update([
+            'total' => $order->items()->sum('total_price'),
+        ]);
 
         return $this->current();
     }
 
     public function clear(): void
     {
-        $this->order->items()->delete();
+        $order = $this->getDraftOrder();
 
-        $this->order->total = 0;
-        $this->order->save();
+        $order->items()->delete();
+
+        $order->update(['total' => 0]);
+    }
+
+    protected function getDraftOrder(): Order
+    {
+        return Order::where('status', 'draft')->orderByDesc('created_at')->firstOrCreate(
+            ['status' => 'draft'],
+            ['total' => 0]
+        );
     }
 
     protected function mapToCart(Order $order): Cart
